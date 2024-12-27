@@ -1,4 +1,5 @@
 from pprint import pprint
+import time
 
 """
 面向用户的操作
@@ -15,31 +16,64 @@ APP的操作
 """
 
 from schedule import *
+from time_struct import TimeStruct
+from time_struct import TimeFormat
 
 
 class App:
     def __init__(self):
         self.generate_targets()
-        # pprint(self.targets)
-        self.priority_weight = {"year": 1, "month": 1, "week": 1, "day": 1}
-        self.generate_task()
+        self.priority_weights = [1, 2, 3, 4]
+        self.tasks = self.generate_task()
+        self.schedule = self.read_schedule()
+
+    def generate_schedule_list(self):
+        pass
+
+    def read_schedule(self):
+        schedules = []
+        with open(
+            "E://Life_systerm//Things//Schedule//schedule.txt", "r", encoding="utf-8"
+        ) as f:
+            line = f.readline()
+            # 2 23:30 24:00 0 睡觉
+            while line != None and line != "":
+                words = line.split(" ")
+                words[-1] = words[-1].strip("\n")
+                s = Schedule(
+                    type=int(words[0]),
+                    s_time=TimeStruct(words[1], TimeFormat.FORMAT_HM),
+                    e_time=TimeStruct(words[2], TimeFormat.FORMAT_HM),
+                    task=None,
+                    des=words[4],
+                )
+                schedules.append(s)
+                line = f.readline()
+        # for s in schedules:
+        #     print(s)
+        return schedules
 
     def test(self):
         pass
 
     def generate_task(self):
         tasks = []
-        # print(self.targets[-1])
+        # print(self.targets[-1][0].father.father)
         for target in self.targets[-1]:
-            priority = 0
-            des = ""
-            if target.father != 0:
-                priority += target.priority
-            else:
-                for t in target:
-                    priority += t.priority
-                    print(t.number, t.father, t.des, t.priority)
-            # print(target.number, target.father, target.des, priority)
+            priority = target.priority * self.priority_weights[-1]
+            des = target.des
+            # print(target.number, target.des, target.priority, self.priority_weights[-1])
+            if target.father != None:
+                for t, cnt in TargetIterator(target):
+                    priority += t.priority * self.priority_weights[3 - cnt]
+                    # print(t.number, t.des, t.priority, self.priority_weights[3 - cnt])
+                # print("priority = ", priority)
+            # 目标到任务的实现
+            task = Task(target=target, priority=priority, des=des)
+            tasks.append(task)
+        # for task in tasks:
+        #     print(task.target.number, task.priority, task.des)
+        return tasks
 
     def generate_targets(self) -> list:
         self.targets = []
