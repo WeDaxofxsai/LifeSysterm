@@ -24,11 +24,36 @@ class App:
     def __init__(self):
         self.generate_targets()
         self.priority_weights = [1, 2, 3, 4]
+        self.timeTable = TimeTable()
         self.tasks = self.generate_task()
-        self.schedule = self.read_schedule()
+        self.schedules = self.read_schedule()
+        self.generate_schedule_list()
+
+    def __cal_task_time(self):
+        self.tasks.sort(key=lambda x: x.priority, reverse=True)
+        priority_sum = sum(x.priority for x in self.tasks)
+        free_time = self.timeTable.get_free_time()
+        all_time = TimeStruct("0:00", "%H%M")
+        for task in self.tasks:
+            task_time = free_time.mul_for_float(task.priority / priority_sum)
+            task.set_time(
+                task_time.round
+                if task_time.round < TimeStruct("4:00", "%H%M")
+                else TimeStruct("4:00", "%H%M")
+            )
+            # print(task_time.round)
+            all_time = all_time + task_time.round
+        print("use_time", all_time)
 
     def generate_schedule_list(self):
-        pass
+        for s in self.schedules:
+            self.timeTable.add_schedule(s)
+        # print(self.timeTable)
+        self.__cal_task_time()
+        for t in self.tasks:
+            self.timeTable.add_schedule(t)
+        self.timeTable.reduce_schedule()
+        print(self.timeTable)
 
     def read_schedule(self):
         schedules = []

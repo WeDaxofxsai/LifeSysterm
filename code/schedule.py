@@ -14,7 +14,7 @@
 
 from enum import Enum
 from time_struct import *
-from functools import singledispatch
+from functools import singledispatchmethod
 
 
 class Target:
@@ -81,6 +81,11 @@ class Task:
         self.priority = priority
         self.use_time = TimeStruct("0:00", TimeFormat.FORMAT_HM)
 
+    def __str__(self):
+        return "type:{}, des:{}, priority:{}, use_time:{}".format(
+            self.type, self.des, self.priority, self.use_time
+        )
+
     def get_target(self):
         return self.target
 
@@ -92,9 +97,6 @@ class Task:
 
     def set_time(self, use_time: TimeStruct):
         self.use_time = use_time
-
-    def use_time(self):
-        return self.use_time
 
 
 class TYPE_INCIDENT(Enum):
@@ -119,15 +121,15 @@ class Schedule:
         self.task = task
         self.des = des
 
+    @property
     def use_time(self):
         return self.end_time - self.start_time
 
     def __str__(self):
-        return "type:{}, start_time:{}, end_time:{}, task:{}, des:{}".format(
+        return "type:{}, start_time:{}, end_time:{}, task_des:{}".format(
             TYPE_INCIDENT(self.type),
             self.start_time,
             self.end_time,
-            self.task,
             self.des,
         )
 
@@ -151,52 +153,105 @@ class TimeTable:
     def __init__(self):
         self.schedule_list = []
         self.schedule_list.append(
-            Schedule(TYPE_INCIDENT.INS_TYPE_NONE),
-            TimeStruct("0:00", TimeFormat.FORMAT_HM),
-            TimeStruct("24:00", TimeFormat.FORMAT_HM),
-            None,
-            "未分配时间",
+            Schedule(
+                TYPE_INCIDENT.INS_TYPE_NONE,
+                TimeStruct("0:00", TimeFormat.FORMAT_HM),
+                TimeStruct("24:00", TimeFormat.FORMAT_HM),
+                None,
+                "未分配时间",
+            )
+        )
+        self.remain_time = TimeStruct("24:00", TimeFormat.FORMAT_HM)
+
+    def get_free_time(self):
+        return self.remain_time
+
+    def __str__(self):
+        return (
+            "---------------------------------\n"
+            + "TimeTable:\n{}".format(
+                "\n".join([str(schedule) for schedule in self.schedule_list])
+            )
+            + "\nremain_time:{}".format(self.remain_time)
+            + "\n---------------------------------"
         )
 
-    @singledispatch
-    def add_schedule(self, obj):
-        print("请传入合法类型的参数！")
+    def show_schedule(self):
+        for i in self.schedule_list:
+            print(i)
 
-    @add_schedule.register(Schedule)
-    def add_schedule(self, schedule):
+    @singledispatchmethod
+    def add_schedule(self, arg):
+        raise NotImplementedError("Cannot negate a")
+
+    @add_schedule.register
+    def _(self, schedule: Schedule):
         for i in range(len(self.schedule_list)):
             if (
                 self.schedule_list[i].type == TYPE_INCIDENT.INS_TYPE_NONE
                 and self.schedule_list[i].start_time <= schedule.start_time
                 and self.schedule_list[i].end_time >= schedule.end_time
             ):
+                if self.schedule_list[i].start_time < schedule.start_time:
+                    stick_schedule = Schedule(
+                        TYPE_INCIDENT.INS_TYPE_NONE,
+                        self.schedule_list[i].start_time,
+                        schedule.start_time,
+                        None,
+                        "未分配时间",
+                    )
+                    self.schedule_list.insert(i, stick_schedule)
+                    i += 1
                 self.schedule_list[i].start_time = schedule.end_time
-                self.schedule_list(i, schedule)
+                self.schedule_list.insert(i, schedule)
+                self.remain_time -= schedule.use_time
+                # print(self.schedule_list)
+                if self.schedule_list[-1].start_time == self.schedule_list[-1].end_time:
+                    self.schedule_list.pop()
+                return
             elif i == len(self.schedule_list) - 1:
                 print("添加失败，时间冲突")
 
-    @add_schedule.register(Task)
-    def add_schedule(self, task: Task):
+    @add_schedule.register
+    def _(self, task: Task):
         for i in range(len(self.schedule_list)):
             if (
                 self.schedule_list[i].type == TYPE_INCIDENT.INS_TYPE_NONE
-                and self.schedule_list[i].use_time() <= task.use_time()
+                and task.use_time
+                <= self.schedule_list[i].end_time - self.schedule_list[i].start_time
             ):
-                schedule = Schedule(
-                    type=TYPE_INCIDENT.INS_TYPE_ARRANGED,
-                    s_time=self.schedule_list[i].start_time,
-                    e_time=self.schedule_list[i].start_time + task.use_time(),
-                    task=task,
-                    des=task.get_des(),
+                stick_schedule = Schedule(
+                    TYPE_INCIDENT.INS_TYPE_ARRANGED,
+                    self.schedule_list[i].start_time,
+                    self.schedule_list[i].start_time + task.use_time,
+                    task,
+                    task.des,
                 )
-                self.schedule_list[i].start_time = (
-                    schedule_list[i].start_time + task.use_time()
-                )
-                self.schedule_list(i, schedule)
+                self.schedule_list[i].start_time = stick_schedule.end_time
+                self.schedule_list.insert(i, stick_schedule)
+                i += 1
+                if self.schedule_list[i].start_time == self.schedule_list[i].end_time:
+                    self.schedule_list.remove(self.schedule_list[i])
+                self.remain_time -= task.use_time
+                return
             elif i == len(self.schedule_list) - 1:
-                print("添加失败，时间冲突")
+                print(task, "添加失败，时间冲突")
+                print("现在的日程为")
+                self.show_schedule()
+                # print(self.schedule_list)
+
+    def reduce_schedule(self):
+        for i in self.schedule_list:
+            if i.type == TYPE_INCIDENT.INS_TYPE_NONE:
+                i.type = TYPE_INCIDENT.INS_TYPE_ARRANGED
+                i.des = "空闲时间"
+        self.remain_time = TimeStruct("0:00", TimeFormat.FORMAT_HM)
+
+    # def add_schedule(self, i: str, j: str):
+    #     print("add_task")
 
 
 if __name__ == "__main__":
     # 创建一个时间表
-    pass
+    a = TimeTable()
+    a.add_schedule(22)

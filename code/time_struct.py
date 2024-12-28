@@ -11,6 +11,7 @@ class TimeStruct:
         self.minute = 0
         self.second = 0
         self.format = t_format
+        self.str = str
         self.get_time_struct(str, t_format)
 
     def __add__(self, other):
@@ -123,6 +124,13 @@ class TimeStruct:
         if self.format == TimeFormat.FORMAT_HM:
             return TimeStruct(f"{hour:02d}:{minute:02d}", TimeFormat.FORMAT_HM)
 
+    def mul_for_float(self, other: float):
+        minute = self.minute + self.hour * 60
+        minute = minute * other
+        hour = int(minute // 60)
+        minute = int(minute % 60)
+        return TimeStruct(f"{hour:02d}:{minute:02d}", TimeFormat.FORMAT_HM)
+
     def get_time_struct(self, str: str, format: TimeFormat) -> str:
         if format == TimeFormat.FORMAT_HM:
             words = str.split(":")
@@ -162,8 +170,20 @@ class TimeStruct:
 
         return
 
+    @property
+    def round(self):
+        round_time = TimeStruct(self.str, TimeFormat.FORMAT_HM)
+        if self.format == TimeFormat.FORMAT_HM:
+            if self.minute >= 40:
+                round_time.hour += 1
+                round_time.minute = 0
+            else:
+                round_time.minute = 0
+        return round_time
+
 
 if __name__ == "__main__":
-    t1 = TimeStruct("13:30", TimeFormat.FORMAT_HM)
+    t1 = TimeStruct("13:20", TimeFormat.FORMAT_HM)
     t2 = TimeStruct("01:40", TimeFormat.FORMAT_HM)
-    print(t1 - t2)
+    # print((t1 - t2).round)
+    print(t2.mul_for_float(0.5).round)
