@@ -26,7 +26,7 @@ class App:
         self.priority_weights = [1, 2, 3, 4]
         self.timeTable = TimeTable()
         self.tasks = self.generate_task()
-        self.schedules = self.read_schedule()
+        self.schedules = self.read_schedule("Schedule.txt")
         self.generate_schedule_list()
 
     def __cal_task_time(self):
@@ -53,13 +53,21 @@ class App:
         for t in self.tasks:
             self.timeTable.add_schedule(t)
         self.timeTable.reduce_schedule()
+        # print(self.timeTable)
+
+    def get_timeTable(self):
+        # 输出信息
         print(self.timeTable)
 
-    def read_schedule(self):
+    def ser_task_by_des(self, des: str):
+        for task in self.tasks:
+            if task.des == des:
+                return task
+        return None
+
+    def read_schedule(self, file_path: str):
         schedules = []
-        with open(
-            "E://Life_systerm//Things//Schedule//schedule.txt", "r", encoding="utf-8"
-        ) as f:
+        with open("Things/Schedule/" + file_path, "r", encoding="utf-8") as f:
             line = f.readline()
             # 2 23:30 24:00 0 睡觉
             while line != None and line != "":
@@ -69,13 +77,11 @@ class App:
                     type=int(words[0]),
                     s_time=TimeStruct(words[1], TimeFormat.FORMAT_HM),
                     e_time=TimeStruct(words[2], TimeFormat.FORMAT_HM),
-                    task=None,
+                    task=None if words[3] == "0" else self.ser_task_by_des(words[4]),
                     des=words[4],
                 )
                 schedules.append(s)
                 line = f.readline()
-        # for s in schedules:
-        #     print(s)
         return schedules
 
     def test(self):
@@ -146,6 +152,16 @@ class App:
     def view_Schedule_for_user(self):
         pass
 
+    def read_schedule_ofU(self, file_path: str):
+        usr_schedules = self.read_schedule(file_path)
+        # for usr_schedule in usr_schedules:
+        #     print(usr_schedule)
+
+    def import_for_usr(self):
+        pass
+
 
 if __name__ == "__main__":
     app = App()
+    app.get_timeTable()
+    # app.read_schedule_ofU("mine.txt")
